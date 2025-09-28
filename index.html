@@ -246,6 +246,7 @@
             </div>
 
             <div class="actions">
+                <button id="changePasswordBtn" class="action-btn change-password-btn" data-en="🔑 Change Password" data-zh="🔑 修改密码">🔑 Change Password</button>
                 <button id="clearWordsBtn" class="action-btn clear-btn" data-en="Clear All Words" data-zh="清除所有单词">Clear All Words</button>
                 <button id="saveWordsBtn" class="action-btn save-btn" data-en="Save Changes" data-zh="保存更改">Save Changes</button>
             </div>
@@ -262,7 +263,7 @@
             <div class="modal-body">
                 <p data-en="Please enter the admin password to access admin mode:" data-zh="请输入管理员密码以访问管理模式：">Please enter the admin password to access admin mode:</p>
                 <div class="password-input-container">
-                    <input type="password" id="passwordInput" class="password-input" placeholder="Enter password" maxlength="20" data-placeholder-en="Enter password" data-placeholder-zh="输入密码">
+                    <input type="password" id="passwordInput" class="password-input" placeholder="Enter password" data-placeholder-en="Enter password" data-placeholder-zh="输入密码">
                     <div class="password-buttons">
                         <button id="submitPassword" class="submit-btn" data-en="Access Admin" data-zh="访问管理">Access Admin</button>
                         <button id="cancelPassword" class="cancel-btn" data-en="Cancel" data-zh="取消">Cancel</button>
@@ -294,6 +295,31 @@
                 </div>
                 <div id="setupPasswordError" class="password-error" style="display: none;">
                     ❌ <span id="setupErrorText" data-en="Passwords do not match. Please try again." data-zh="密码不匹配。请重试。">Passwords do not match. Please try again.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 data-en="Change Admin Password" data-zh="修改管理员密码">Change Admin Password</h3>
+                <span class="close-btn" id="closeChangePasswordModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p data-en="Please enter your current password and set a new password:" data-zh="请输入当前密码并设置新密码：">Please enter your current password and set a new password:</p>
+                <div class="password-input-container">
+                    <input type="password" id="currentPasswordInput" class="password-input" placeholder="Current password" data-placeholder-en="Current password" data-placeholder-zh="当前密码" style="margin-bottom: 10px;">
+                    <input type="password" id="newPasswordChangeInput" class="password-input" placeholder="New password" data-placeholder-en="New password" data-placeholder-zh="新密码" style="margin-bottom: 10px;">
+                    <input type="password" id="confirmNewPasswordInput" class="password-input" placeholder="Confirm new password" data-placeholder-en="Confirm new password" data-placeholder-zh="确认新密码">
+                    <div class="password-buttons">
+                        <button id="submitChangePassword" class="submit-btn" data-en="Change Password" data-zh="修改密码">Change Password</button>
+                        <button id="cancelChangePassword" class="cancel-btn" data-en="Cancel" data-zh="取消">Cancel</button>
+                    </div>
+                </div>
+                <div id="changePasswordError" class="password-error" style="display: none;">
+                    ❌ <span id="changePasswordErrorText" data-en="Error message" data-zh="错误信息">Error message</span>
                 </div>
             </div>
         </div>

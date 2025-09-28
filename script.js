@@ -82,6 +82,18 @@ const exportDataBtn = document.getElementById('exportDataBtn');
 const importDataBtn = document.getElementById('importDataBtn');
 const importFileInput = document.getElementById('importFileInput');
 
+// Password management elements
+const changePasswordBtn = document.getElementById('changePasswordBtn');
+const changePasswordModal = document.getElementById('changePasswordModal');
+const currentPasswordInput = document.getElementById('currentPasswordInput');
+const newPasswordChangeInput = document.getElementById('newPasswordChangeInput');
+const confirmNewPasswordInput = document.getElementById('confirmNewPasswordInput');
+const submitChangePassword = document.getElementById('submitChangePassword');
+const cancelChangePassword = document.getElementById('cancelChangePassword');
+const closeChangePasswordModalBtn = document.getElementById('closeChangePasswordModal');
+const changePasswordError = document.getElementById('changePasswordError');
+const changePasswordErrorText = document.getElementById('changePasswordErrorText');
+
 // Wheel elements
 const wheelModeBtn = document.getElementById('wheelModeBtn');
 const wheelAdminBtn = document.getElementById('wheelAdminBtn');
@@ -215,6 +227,33 @@ function setupEventListeners() {
     if (exportDataBtn) exportDataBtn.addEventListener('click', exportAllData);
     if (importDataBtn) importDataBtn.addEventListener('click', () => importFileInput.click());
     if (importFileInput) importFileInput.addEventListener('change', importAllData);
+    
+    // Password management controls
+    if (changePasswordBtn) changePasswordBtn.addEventListener('click', showChangePasswordModal);
+    if (submitChangePassword) submitChangePassword.addEventListener('click', changeAdminPassword);
+    if (cancelChangePassword) cancelChangePassword.addEventListener('click', closeChangePasswordModal);
+    if (closeChangePasswordModalBtn) closeChangePasswordModalBtn.addEventListener('click', closeChangePasswordModal);
+    if (currentPasswordInput) {
+        currentPasswordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                newPasswordChangeInput.focus();
+            }
+        });
+    }
+    if (newPasswordChangeInput) {
+        newPasswordChangeInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                confirmNewPasswordInput.focus();
+            }
+        });
+    }
+    if (confirmNewPasswordInput) {
+        confirmNewPasswordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                changeAdminPassword();
+            }
+        });
+    }
     if (pauseBtn) {
         pauseBtn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -1505,6 +1544,14 @@ document.addEventListener('keydown', function(e) {
     // Only work in child mode
     if (!childMode.classList.contains('active')) return;
     
+    // Don't capture keyboard events when modals are open
+    if (passwordModal && passwordModal.style.display === 'flex') return;
+    if (setupPasswordModal && setupPasswordModal.style.display === 'flex') return;
+    if (changePasswordModal && changePasswordModal.style.display === 'flex') return;
+    
+    // Don't capture events when user is typing in input fields
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    
     switch(e.key) {
         case ' ':
         case 'Enter':
@@ -2515,10 +2562,16 @@ function updateWheelItem(type, index, field, value) {
 function exportAllData() {
     try {
         // Collect all data from localStorage
+        const settings = JSON.parse(localStorage.getItem('englishLearningSettings') || '{}');
+        
+        // Remove admin password from exported settings for security
+        const exportSettings = { ...settings };
+        delete exportSettings.adminPassword;
+        
         const exportData = {
             version: "1.0",
             exportDate: new Date().toISOString(),
-            settings: JSON.parse(localStorage.getItem('englishLearningSettings') || '{}'),
+            settings: exportSettings,
             words: {},
             wheelData: {
                 punishment: JSON.parse(localStorage.getItem('punishmentWheelData') || '[]'),
@@ -2616,4 +2669,78 @@ function importAllData(event) {
     
     // Clear the input for next use
     event.target.value = '';
+}
+
+// Password Management Functions
+function showChangePasswordModal() {
+    changePasswordModal.style.display = 'flex';
+    currentPasswordInput.value = '';
+    newPasswordChangeInput.value = '';
+    confirmNewPasswordInput.value = '';
+    changePasswordError.style.display = 'none';
+    currentPasswordInput.focus();
+    
+    // Update translations
+    updateAllTranslations();
+}
+
+function closeChangePasswordModal() {
+    changePasswordModal.style.display = 'none';
+    currentPasswordInput.value = '';
+    newPasswordChangeInput.value = '';
+    confirmNewPasswordInput.value = '';
+    changePasswordError.style.display = 'none';
+}
+
+function changeAdminPassword() {
+    const currentPassword = currentPasswordInput.value.trim();
+    const newPassword = newPasswordChangeInput.value.trim();
+    const confirmPassword = confirmNewPasswordInput.value.trim();
+    
+    // Validate current password
+    if (currentPassword !== adminPassword) {
+        showChangePasswordError(getTranslatedText('Current password is incorrect.', '当前密码不正确。'));
+        return;
+    }
+    
+    // Validate new password
+    if (newPassword !== confirmPassword) {
+        showChangePasswordError(getTranslatedText('New passwords do not match.', '新密码不匹配。'));
+        return;
+    }
+    
+    if (newPassword === '') {
+        showChangePasswordError(getTranslatedText('New password cannot be empty.', '新密码不能为空。'));
+        return;
+    }
+    
+    // Save the new password
+    adminPassword = newPassword;
+    saveSettings();
+    
+    // Close modal and show success
+    closeChangePasswordModal();
+    
+    showNotification(
+        getTranslatedText('Password changed successfully!', '密码修改成功！'),
+        'success'
+    );
+}
+
+function showChangePasswordError(message) {
+    changePasswordErrorText.textContent = message;
+    changePasswordError.style.display = 'block';
+    
+    // Add shake animation to modal
+    const modalContent = changePasswordModal.querySelector('.modal-content');
+    modalContent.style.animation = 'shake 0.5s ease';
+    setTimeout(() => {
+        modalContent.style.animation = '';
+    }, 500);
+    
+    // Clear inputs and focus on current password
+    currentPasswordInput.value = '';
+    newPasswordChangeInput.value = '';
+    confirmNewPasswordInput.value = '';
+    currentPasswordInput.focus();
 }

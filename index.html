@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Learning for Kids</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- ResponsiveVoice API for better text-to-speech (free version) -->
+    <script src="https://code.responsivevoice.org/responsivevoice.js"></script>
+</head>
+<body>
+    <!-- Language Selector -->
+    <div class="language-selector">
+        <button id="langToggle" class="lang-toggle">
+            <span class="lang-icon">🌐</span>
+            <span id="currentLang">English</span>
+        </button>
+    </div>
+
+    <!-- Mode Selection -->
+    <div class="mode-selector">
+        <button id="childModeBtn" class="mode-btn active">
+            <span class="icon">👶</span>
+            <span data-en="Child Mode" data-zh="儿童模式">Child Mode</span>
+        </button>
+        <button id="wheelModeBtn" class="mode-btn">
+            <span class="icon">🎯</span>
+            <span data-en="Wheel" data-zh="转盘">Wheel</span>
+        </button>
+        <button id="wheelAdminBtn" class="mode-btn">
+            <span class="icon">⚙️</span>
+            <span data-en="Wheel Settings" data-zh="转盘设置">Wheel Settings</span>
+        </button>
+        <button id="adminModeBtn" class="mode-btn">
+            <span class="icon">👨‍🏫</span>
+            <span data-en="Admin Mode" data-zh="管理员模式">Admin Mode</span>
+        </button>
+    </div>
+
+    <!-- Child Mode -->
+    <div id="childMode" class="mode-container active">
+        <div class="learning-card">
+            <h1 class="title" data-en="Today's English Word" data-zh="今天的英语单词">Today's English Word</h1>
+            <div class="word-display">
+                <div id="currentWord" class="word" data-en="Click Next to start!" data-zh="点击下一个开始！">Click Next to start!</div>
+                <div id="wordMeaning" class="meaning"></div>
+            </div>
+            <div class="controls">
+                <div class="control-row">
+                    <button id="startBtn" class="control-btn start-btn">
+                        <span class="icon">⏮️</span>
+                        <span data-en="Start Over" data-zh="重新开始">Start Over</span>
+                    </button>
+                    <button id="prevBtn" class="control-btn prev-btn">
+                        <span class="icon">⏪</span>
+                        <span data-en="Previous" data-zh="上一个">Previous</span>
+                    </button>
+                    <button id="playBtn" class="control-btn play-btn">
+                        <span class="icon">🔊</span>
+                        <span data-en="Play Sound" data-zh="播放声音">Play Sound</span>
+                    </button>
+                    <button id="nextBtn" class="control-btn next-btn">
+                        <span class="icon">▶️</span>
+                        <span data-en="Next Word" data-zh="下一个单词">Next Word</span>
+                    </button>
+                </div>
+                <div class="control-row">
+                    <button id="pauseBtn" class="control-btn pause-btn" style="display: none;">
+                        <span class="icon">⏸️</span>
+                        <span data-en="Pause Timer" data-zh="暂停计时">Pause Timer</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Timer Progress Bar -->
+            <div id="timerContainer" class="timer-container" style="display: none;">
+                <div class="timer-info">
+                    <span id="timerText" data-en="Next word in:" data-zh="下一个单词：">Next word in: <span id="timerCount">10</span>s</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div id="progressBar" class="progress-bar"></div>
+                </div>
+            </div>
+            
+            <div class="progress">
+                <span id="wordProgress">0/0</span>
+                <span id="wordCount" class="word-count" data-en="0 of 0 words" data-zh="0 个单词，共 0 个">0 of 0 words</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wheel Mode -->
+    <div id="wheelMode" class="mode-container">
+        <div class="wheel-container">
+            <h2 class="wheel-title" data-en="Spin the Wheel" data-zh="转转盘">转转盘</h2>
+            
+            <div class="wheel-type-selector">
+                <button id="punishmentWheelBtn" class="wheel-type-btn active" data-en="Punishment Wheel" data-zh="惩罚转盘">
+                    <span>惩罚转盘</span>
+                </button>
+                <button id="rewardWheelBtn" class="wheel-type-btn" data-en="Reward Wheel" data-zh="奖励转盘">
+                    <span>奖励转盘</span>
+                </button>
+            </div>
+
+            <div class="wheel-display">
+                <div class="wheel-main">
+                    <div id="wheelCanvas" class="wheel-canvas">
+                        <canvas id="wheel" width="500" height="500"></canvas>
+                        <div class="wheel-pointer"></div>
+                    </div>
+                    
+                    <div class="wheel-controls">
+                        <button id="spinBtn" class="spin-btn" data-en="SPIN!" data-zh="转起来！">
+                            <span>转起来！</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="wheelResultDisplay" class="wheel-result-display hidden">
+                    <div class="result-content">
+                        <h3 id="resultTitle" data-en="Result:" data-zh="结果：">结果：</h3>
+                        <div id="resultItem" class="result-item"></div>
+                        <button id="spinAgainBtn" class="spin-again-btn" data-en="Spin Again" data-zh="再转一次">
+                            <span>再转一次</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wheel Admin Mode -->
+    <div id="wheelAdminMode" class="mode-container">
+        <div class="wheel-admin-container">
+            <h2 class="admin-title" data-en="Wheel Settings" data-zh="转盘设置">转盘设置</h2>
+            
+            <div class="wheel-admin-tabs">
+                <button id="punishmentAdminTab" class="admin-tab active" data-en="Punishment Settings" data-zh="惩罚设置">
+                    <span>惩罚设置</span>
+                </button>
+                <button id="rewardAdminTab" class="admin-tab" data-en="Reward Settings" data-zh="奖励设置">
+                    <span>奖励设置</span>
+                </button>
+            </div>
+
+            <div id="punishmentAdmin" class="wheel-admin-panel">
+                <div class="admin-section">
+                    <h3 data-en="Punishment Items" data-zh="惩罚项目">惩罚项目</h3>
+                    <div id="punishmentItems" class="wheel-items"></div>
+                    <button id="addPunishmentBtn" class="add-item-btn" data-en="Add Punishment" data-zh="添加惩罚">
+                        <span>添加惩罚</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="rewardAdmin" class="wheel-admin-panel hidden">
+                <div class="admin-section">
+                    <h3 data-en="Reward Items" data-zh="奖励项目">奖励项目</h3>
+                    <div id="rewardItems" class="wheel-items"></div>
+                    <button id="addRewardBtn" class="add-item-btn" data-en="Add Reward" data-zh="添加奖励">
+                        <span>添加奖励</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Mode -->
+    <div id="adminMode" class="mode-container">
+        <div class="admin-panel">
+            <h1 class="title" data-en="Admin Panel - Manage Daily Words" data-zh="管理面板 - 管理每日单词">Admin Panel - Manage Daily Words</h1>
+            
+            <div class="date-selector">
+                <label for="dateInput" data-en="Select Date:" data-zh="选择日期：">Select Date:</label>
+                <input type="date" id="dateInput" class="date-input">
+            </div>
+
+            <div class="word-input-section">
+                <h3 data-en="Add New Word" data-zh="添加新单词">Add New Word</h3>
+                <div class="input-group">
+                    <input type="text" id="newWord" placeholder="Enter English word" class="word-input" data-placeholder-en="Enter English word" data-placeholder-zh="输入英语单词">
+                    <input type="text" id="newMeaning" placeholder="Enter meaning (optional)" class="meaning-input" data-placeholder-en="Enter meaning (optional)" data-placeholder-zh="输入含义（可选）">
+                    <button id="addWordBtn" class="add-btn" data-en="Add Word" data-zh="添加单词">Add Word</button>
+                </div>
+            </div>
+
+            <div class="words-list-section">
+                <h3 data-en="Today's Words" data-zh="今天的单词">Today's Words</h3>
+                <div id="wordsList" class="words-list">
+                    <p class="no-words" data-en="No words added for today. Add some words above!" data-zh="今天还没有添加单词。请在上面添加一些单词！">No words added for today. Add some words above!</p>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3 data-en="Learning Settings" data-zh="学习设置">Learning Settings</h3>
+                <div class="setting-item">
+                    <label class="toggle-container">
+                        <input type="checkbox" id="hideWordToggle" class="toggle-input">
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-label" data-en="Hide words (listening practice only)" data-zh="隐藏单词（仅听力练习）">Hide words (listening practice only)</span>
+                    </label>
+                    <p class="setting-description" data-en="When enabled, children will only see play and next buttons for audio-only learning." data-zh="启用后，儿童只会看到播放和下一个按钮，进行纯听力学习。">When enabled, children will only see play and next buttons for audio-only learning.</p>
+                </div>
+                
+                <div class="setting-item">
+                    <label class="toggle-container">
+                        <input type="checkbox" id="allowPreviousToggle" class="toggle-input">
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-label" data-en="Allow previous word navigation" data-zh="允许上一个单词导航">Allow previous word navigation</span>
+                    </label>
+                    <p class="setting-description" data-en="When enabled, children can use the Previous button to go back to earlier words." data-zh="启用后，儿童可以使用上一个按钮返回到之前的单词。">When enabled, children can use the Previous button to go back to earlier words.</p>
+                </div>
+                
+                <div class="setting-item">
+                    <label class="toggle-container">
+                        <input type="checkbox" id="showPauseButtonToggle" class="toggle-input" checked>
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-label" data-en="Show pause timer button" data-zh="显示暂停计时按钮">Show pause timer button</span>
+                    </label>
+                    <p class="setting-description" data-en="When enabled, children can pause and resume the auto-advance timer." data-zh="启用后，儿童可以暂停和恢复自动切换计时器。">When enabled, children can pause and resume the auto-advance timer.</p>
+                </div>
+                
+                <div class="setting-item">
+                    <label class="timeout-container">
+                        <span class="timeout-label" data-en="Auto-advance timeout (seconds):" data-zh="自动切换超时（秒）：">Auto-advance timeout (seconds):</span>
+                        <div class="timeout-controls">
+                            <input type="range" id="timeoutSlider" class="timeout-slider" min="0" max="60" value="0" step="5">
+                            <input type="number" id="timeoutNumber" class="timeout-number" min="0" max="60" value="0" step="5">
+                            <span class="timeout-unit" data-en="sec" data-zh="秒">sec</span>
+                        </div>
+                    </label>
+                    <p class="setting-description" data-en="Set to 0 to disable auto-advance. When enabled, words automatically advance after the specified time with a progress bar." data-zh="设置为0可禁用自动切换。启用后，单词会在指定时间后自动切换，并显示进度条。">Set to 0 to disable auto-advance. When enabled, words automatically advance after the specified time with a progress bar.</p>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button id="clearWordsBtn" class="action-btn clear-btn" data-en="Clear All Words" data-zh="清除所有单词">Clear All Words</button>
+                <button id="saveWordsBtn" class="action-btn save-btn" data-en="Save Changes" data-zh="保存更改">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Password Modal -->
+    <div id="passwordModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-en="🔒 Admin Access Required" data-zh="🔒 需要管理员权限">🔒 Admin Access Required</h2>
+                <span class="close-btn" id="closeModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p data-en="Please enter the admin password to access admin mode:" data-zh="请输入管理员密码以访问管理模式：">Please enter the admin password to access admin mode:</p>
+                <div class="password-input-container">
+                    <input type="password" id="passwordInput" class="password-input" placeholder="Enter password" maxlength="20" data-placeholder-en="Enter password" data-placeholder-zh="输入密码">
+                    <div class="password-buttons">
+                        <button id="submitPassword" class="submit-btn" data-en="Access Admin" data-zh="访问管理">Access Admin</button>
+                        <button id="cancelPassword" class="cancel-btn" data-en="Cancel" data-zh="取消">Cancel</button>
+                    </div>
+                </div>
+                <div id="passwordError" class="password-error" style="display: none;">
+                    ❌ <span data-en="Incorrect password. Please try again." data-zh="密码错误。请重试。">Incorrect password. Please try again.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

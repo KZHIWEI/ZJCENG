@@ -440,9 +440,43 @@ body {
     color: white;
 }
 
+.export-btn {
+    background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+    color: white;
+}
+
+.import-btn {
+    background: linear-gradient(135deg, #fdcb6e 0%, #e17055 100%);
+    color: white;
+}
+
 .action-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Data Management Section */
+.data-management-section {
+    margin-bottom: 30px;
+    padding: 25px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 15px;
+    border: 2px solid #dee2e6;
+}
+
+.data-management-section h3 {
+    font-size: 1.5em;
+    color: #4a5568;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.data-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
 }
 
 /* Responsive Design */
@@ -1032,6 +1066,7 @@ body {
     margin-top: 15px;
     animation: shake 0.5s ease;
 }
+
 
 @keyframes slideInScale {
     from {

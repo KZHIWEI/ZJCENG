@@ -235,6 +235,16 @@
                 </div>
             </div>
 
+            <div class="data-management-section">
+                <h3 data-en="Data Management" data-zh="数据管理">Data Management</h3>
+                <div class="data-actions">
+                    <button id="exportDataBtn" class="action-btn export-btn" data-en="📤 Export All Data" data-zh="📤 导出所有数据">📤 Export All Data</button>
+                    <button id="importDataBtn" class="action-btn import-btn" data-en="📥 Import Data" data-zh="📥 导入数据">📥 Import Data</button>
+                    <input type="file" id="importFileInput" accept=".json" style="display: none;">
+                </div>
+                <p class="setting-description" data-en="Export all your settings, words, and wheel configurations to a JSON file, or import from a previously exported file." data-zh="将所有设置、单词和转盘配置导出到JSON文件，或从之前导出的文件导入。">Export all your settings, words, and wheel configurations to a JSON file, or import from a previously exported file.</p>
+            </div>
+
             <div class="actions">
                 <button id="clearWordsBtn" class="action-btn clear-btn" data-en="Clear All Words" data-zh="清除所有单词">Clear All Words</button>
                 <button id="saveWordsBtn" class="action-btn save-btn" data-en="Save Changes" data-zh="保存更改">Save Changes</button>
@@ -260,6 +270,30 @@
                 </div>
                 <div id="passwordError" class="password-error" style="display: none;">
                     ❌ <span data-en="Incorrect password. Please try again." data-zh="密码错误。请重试。">Incorrect password. Please try again.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- First Time Password Setup Modal -->
+    <div id="setupPasswordModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 data-en="Setup Admin Password" data-zh="设置管理员密码">Setup Admin Password</h3>
+                <span class="close-btn" id="closeSetupModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p data-en="Welcome! Please set up your admin password for first-time access:" data-zh="欢迎！请为首次访问设置您的管理员密码：">Welcome! Please set up your admin password for first-time access:</p>
+                <div class="password-input-container">
+                    <input type="password" id="newPasswordInput" class="password-input" placeholder="Enter new password" data-placeholder-en="Enter new password" data-placeholder-zh="输入新密码">
+                    <input type="password" id="confirmPasswordInput" class="password-input" placeholder="Confirm password" data-placeholder-en="Confirm password" data-placeholder-zh="确认密码" style="margin-top: 10px;">
+                    <div class="password-buttons">
+                        <button id="setupPassword" class="submit-btn" data-en="Set Password" data-zh="设置密码">Set Password</button>
+                        <button id="cancelSetup" class="cancel-btn" data-en="Cancel" data-zh="取消">Cancel</button>
+                    </div>
+                </div>
+                <div id="setupPasswordError" class="password-error" style="display: none;">
+                    ❌ <span id="setupErrorText" data-en="Passwords do not match. Please try again." data-zh="密码不匹配。请重试。">Passwords do not match. Please try again.</span>
                 </div>
             </div>
         </div>

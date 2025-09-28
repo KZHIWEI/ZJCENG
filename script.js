@@ -8,10 +8,10 @@ let timerInterval = null;
 let currentTimerSeconds = 0;
 let timerPaused = false;
 let isAdminAuthenticated = false;
-const ADMIN_PASSWORD = '66871068';
+let adminPassword = null; // Will be loaded from localStorage or set by user
 let failedAttempts = 0;
 const MAX_ATTEMPTS = 5;
-let currentLanguage = 'en'; // 'en' or 'zh'
+let currentLanguage = 'zh'; // 'en' or 'zh' - Default to Chinese
 let allWordsCompleted = false;
 let visitedWords = new Set();
 let allowPrevious = true;
@@ -61,11 +61,26 @@ const submitPassword = document.getElementById('submitPassword');
 const cancelPassword = document.getElementById('cancelPassword');
 const closeModal = document.getElementById('closeModal');
 const passwordError = document.getElementById('passwordError');
+
+// First-time password setup elements
+const setupPasswordModal = document.getElementById('setupPasswordModal');
+const newPasswordInput = document.getElementById('newPasswordInput');
+const confirmPasswordInput = document.getElementById('confirmPasswordInput');
+const setupPassword = document.getElementById('setupPassword');
+const cancelSetup = document.getElementById('cancelSetup');
+const closeSetupModal = document.getElementById('closeSetupModal');
+const setupPasswordError = document.getElementById('setupPasswordError');
+const setupErrorText = document.getElementById('setupErrorText');
 const langToggle = document.getElementById('langToggle');
 const currentLangSpan = document.getElementById('currentLang');
 const allowPreviousToggle = document.getElementById('allowPreviousToggle');
 const showPauseButtonToggle = document.getElementById('showPauseButtonToggle');
 const wordCount = document.getElementById('wordCount');
+
+// Data management elements
+const exportDataBtn = document.getElementById('exportDataBtn');
+const importDataBtn = document.getElementById('importDataBtn');
+const importFileInput = document.getElementById('importFileInput');
 
 // Wheel elements
 const wheelModeBtn = document.getElementById('wheelModeBtn');
@@ -106,6 +121,9 @@ function initializeApp() {
     
     // Load words for today
     loadWordsForDate(selectedDate);
+    
+    // Initialize wheel
+    initializeWheel();
     
     // Update displays
     updateChildMode();
@@ -192,6 +210,11 @@ function setupEventListeners() {
     if (showPauseButtonToggle) showPauseButtonToggle.addEventListener('change', onShowPauseButtonToggle);
     if (timeoutSlider) timeoutSlider.addEventListener('input', onTimeoutSliderChange);
     if (timeoutNumber) timeoutNumber.addEventListener('input', onTimeoutNumberChange);
+    
+    // Data management controls
+    if (exportDataBtn) exportDataBtn.addEventListener('click', exportAllData);
+    if (importDataBtn) importDataBtn.addEventListener('click', () => importFileInput.click());
+    if (importFileInput) importFileInput.addEventListener('change', importAllData);
     if (pauseBtn) {
         pauseBtn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -209,6 +232,25 @@ function setupEventListeners() {
         passwordInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 checkPassword();
+            }
+        });
+    }
+    
+    // First-time password setup modal controls
+    if (setupPassword) setupPassword.addEventListener('click', setupNewPassword);
+    if (cancelSetup) cancelSetup.addEventListener('click', closeSetupPasswordModal);
+    if (closeSetupModal) closeSetupModal.addEventListener('click', closeSetupPasswordModal);
+    if (newPasswordInput) {
+        newPasswordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                confirmPasswordInput.focus();
+            }
+        });
+    }
+    if (confirmPasswordInput) {
+        confirmPasswordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                setupNewPassword();
             }
         });
     }
@@ -393,6 +435,14 @@ function requestAdminAccess(callback = null) {
         return;
     }
     
+    // Check if password has been set up
+    if (!adminPassword) {
+        // First time setup - show setup modal
+        adminCallback = callback;
+        showSetupPasswordModal();
+        return;
+    }
+    
     // Check if too many failed attempts
     if (failedAttempts >= MAX_ATTEMPTS) {
         showNotification('Too many failed attempts. Please refresh the page to try again.', 'error');
@@ -423,7 +473,7 @@ function closePasswordModal() {
 function checkPassword() {
     const enteredPassword = passwordInput.value.trim();
     
-    if (enteredPassword === ADMIN_PASSWORD) {
+    if (enteredPassword === adminPassword) {
         // Correct password
         isAdminAuthenticated = true;
         closePasswordModal();
@@ -459,6 +509,73 @@ function checkPassword() {
             passwordError.textContent = `❌ Incorrect password. ${MAX_ATTEMPTS - failedAttempts} attempts remaining.`;
         }
     }
+}
+
+// First-time password setup functions
+function showSetupPasswordModal() {
+    setupPasswordModal.style.display = 'flex';
+    newPasswordInput.value = '';
+    confirmPasswordInput.value = '';
+    setupPasswordError.style.display = 'none';
+    newPasswordInput.focus();
+    
+    // Update translations
+    updateAllTranslations();
+}
+
+function closeSetupPasswordModal() {
+    setupPasswordModal.style.display = 'none';
+    newPasswordInput.value = '';
+    confirmPasswordInput.value = '';
+    setupPasswordError.style.display = 'none';
+}
+
+function setupNewPassword() {
+    const newPassword = newPasswordInput.value.trim();
+    const confirmPassword = confirmPasswordInput.value.trim();
+    
+    // Validate password requirements
+    if (newPassword !== confirmPassword) {
+        showSetupError(getTranslatedText('Passwords do not match. Please try again.', '密码不匹配。请重试。'));
+        return;
+    }
+    
+    // Save the new password
+    adminPassword = newPassword;
+    saveSettings();
+    
+    // Close modal and proceed with admin access
+    closeSetupPasswordModal();
+    isAdminAuthenticated = true;
+    
+    if (adminCallback) {
+        adminCallback();
+        adminCallback = null;
+    } else {
+        switchMode('admin');
+    }
+    
+    showNotification(
+        getTranslatedText('Admin password set successfully! Welcome to Admin Mode!', '管理员密码设置成功！欢迎进入管理模式！'),
+        'success'
+    );
+}
+
+function showSetupError(message) {
+    setupErrorText.textContent = message;
+    setupPasswordError.style.display = 'block';
+    
+    // Add shake animation to modal
+    const modalContent = setupPasswordModal.querySelector('.modal-content');
+    modalContent.style.animation = 'shake 0.5s ease';
+    setTimeout(() => {
+        modalContent.style.animation = '';
+    }, 500);
+    
+    // Clear inputs and focus on first input
+    newPasswordInput.value = '';
+    confirmPasswordInput.value = '';
+    newPasswordInput.focus();
 }
 
 // Child mode functions
@@ -761,6 +878,11 @@ function nextWord() {
     currentWordIndex = (currentWordIndex + 1) % currentWords.length;
     updateChildMode();
     
+    // Auto-play the new word
+    setTimeout(() => {
+        playCurrentWord();
+    }, 300); // Small delay to ensure UI is updated
+    
     // Add fade-in animation only if not in hidden mode
     if (!hideWordMode) {
         currentWord.classList.add('fade-in');
@@ -803,6 +925,11 @@ function previousWord() {
     currentWordIndex = currentWordIndex === 0 ? currentWords.length - 1 : currentWordIndex - 1;
     updateChildMode();
     
+    // Auto-play the new word
+    setTimeout(() => {
+        playCurrentWord();
+    }, 300); // Small delay to ensure UI is updated
+    
     // Add fade-in animation only if not in hidden mode
     if (!hideWordMode) {
         currentWord.classList.add('fade-in');
@@ -843,6 +970,11 @@ function startFromBeginning() {
     // Reset to first word
     currentWordIndex = 0;
     updateChildMode();
+    
+    // Auto-play the first word
+    setTimeout(() => {
+        playCurrentWord();
+    }, 300); // Small delay to ensure UI is updated
     
     // Add fade-in animation only if not in hidden mode
     if (!hideWordMode && !allWordsCompleted) {
@@ -1004,6 +1136,21 @@ function saveWordsToStorage() {
 function loadWordsForDate(date) {
     const allWords = JSON.parse(localStorage.getItem('englishWords') || '{}');
     currentWords = allWords[date] || [];
+    
+    // Add default words for today if no words exist and it's today's date
+    if (currentWords.length === 0 && date === new Date().toISOString().split('T')[0]) {
+        currentWords = [
+            { word: 'hello', meaning: '你好' },
+            { word: 'world', meaning: '世界' },
+            { word: 'apple', meaning: '苹果' },
+            { word: 'book', meaning: '书' },
+            { word: 'water', meaning: '水' }
+        ];
+        // Save default words
+        allWords[date] = currentWords;
+        localStorage.setItem('englishWords', JSON.stringify(allWords));
+    }
+    
     currentWordIndex = 0;
     // Reset completion state when loading new words
     allWordsCompleted = false;
@@ -1017,7 +1164,8 @@ function loadSettings() {
     allowPrevious = settings.allowPrevious !== undefined ? settings.allowPrevious : true;
     showPauseButton = settings.showPauseButton !== undefined ? settings.showPauseButton : true;
     wordTimeout = settings.wordTimeout || 0;
-    currentLanguage = settings.language || 'en';
+    currentLanguage = settings.language || 'zh';
+    adminPassword = settings.adminPassword || null; // Load custom admin password
     
     hideWordToggle.checked = hideWordMode;
     if (allowPreviousToggle) allowPreviousToggle.checked = allowPrevious;
@@ -1039,7 +1187,8 @@ function saveSettings() {
         allowPrevious: allowPrevious,
         showPauseButton: showPauseButton,
         wordTimeout: wordTimeout,
-        language: currentLanguage
+        language: currentLanguage,
+        adminPassword: adminPassword // Save custom admin password
     };
     localStorage.setItem('englishLearningSettings', JSON.stringify(settings));
 }
@@ -1466,8 +1615,10 @@ function setupWheelCanvas() {
 
 // Load wheel data from localStorage
 function loadWheelData() {
-    const savedPunishments = localStorage.getItem('wheelPunishments');
-    const savedRewards = localStorage.getItem('wheelRewards');
+    const savedPunishments = localStorage.getItem('punishmentWheelData');
+    const savedRewards = localStorage.getItem('rewardWheelData');
+    
+    console.log('Loading wheel data:', { savedPunishments, savedRewards });
     
     if (savedPunishments) {
         punishmentData = JSON.parse(savedPunishments);
@@ -1481,6 +1632,8 @@ function loadWheelData() {
             { text: '做鬼脸', probability: 20 },
             { text: '模仿动物叫声', probability: 20 }
         ];
+        // Save default data
+        localStorage.setItem('punishmentWheelData', JSON.stringify(punishmentData));
     }
     
     if (savedRewards) {
@@ -1494,13 +1647,22 @@ function loadWheelData() {
             { text: '获得小贴纸', probability: 20 },
             { text: '得到表扬', probability: 20 }
         ];
+        // Save default data
+        localStorage.setItem('rewardWheelData', JSON.stringify(rewardData));
     }
+    
+    console.log('Wheel data loaded:', { 
+        punishmentCount: punishmentData.length, 
+        rewardCount: rewardData.length,
+        punishmentData,
+        rewardData 
+    });
 }
 
 // Save wheel data to localStorage
 function saveWheelData() {
-    localStorage.setItem('wheelPunishments', JSON.stringify(punishmentData));
-    localStorage.setItem('wheelRewards', JSON.stringify(rewardData));
+    localStorage.setItem('punishmentWheelData', JSON.stringify(punishmentData));
+    localStorage.setItem('rewardWheelData', JSON.stringify(rewardData));
 }
 
 // Switch wheel type
@@ -2255,6 +2417,8 @@ function updateWheelDisplay() {
 
 // Wheel admin functions
 function updateWheelAdminMode() {
+    // Ensure wheel data is loaded
+    loadWheelData();
     updateWheelAdminItems();
     updateAllTranslations();
 }
@@ -2345,4 +2509,111 @@ function updateWheelItem(type, index, field, value) {
             drawWheel();
         }
     }
+}
+
+// Data Export/Import Functions
+function exportAllData() {
+    try {
+        // Collect all data from localStorage
+        const exportData = {
+            version: "1.0",
+            exportDate: new Date().toISOString(),
+            settings: JSON.parse(localStorage.getItem('englishLearningSettings') || '{}'),
+            words: {},
+            wheelData: {
+                punishment: JSON.parse(localStorage.getItem('punishmentWheelData') || '[]'),
+                reward: JSON.parse(localStorage.getItem('rewardWheelData') || '[]')
+            }
+        };
+        
+        // Collect all word data (all dates)
+        const allWords = JSON.parse(localStorage.getItem('englishWords') || '{}');
+        exportData.words = allWords;
+        
+        // Create and download file
+        const dataStr = JSON.stringify(exportData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `english-learning-backup-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        showNotification(
+            getTranslatedText('Data exported successfully!', '数据导出成功！'),
+            'success'
+        );
+    } catch (error) {
+        console.error('Export error:', error);
+        showNotification(
+            getTranslatedText('Failed to export data. Please try again.', '导出数据失败。请重试。'),
+            'error'
+        );
+    }
+}
+
+function importAllData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const importData = JSON.parse(e.target.result);
+            
+            // Validate data structure
+            if (!importData.version || !importData.exportDate) {
+                throw new Error('Invalid backup file format');
+            }
+            
+            // Confirm import with user
+            const confirmMessage = getTranslatedText(
+                `Import data from ${new Date(importData.exportDate).toLocaleDateString()}? This will overwrite all current data.`,
+                `导入来自 ${new Date(importData.exportDate).toLocaleDateString()} 的数据？这将覆盖所有当前数据。`
+            );
+            
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+            
+            // Import settings
+            if (importData.settings) {
+                localStorage.setItem('englishLearningSettings', JSON.stringify(importData.settings));
+            }
+            
+            // Import word data
+            if (importData.words) {
+                localStorage.setItem('englishWords', JSON.stringify(importData.words));
+            }
+            
+            // Import wheel data
+            if (importData.wheelData) {
+                if (importData.wheelData.punishment) {
+                    localStorage.setItem('punishmentWheelData', JSON.stringify(importData.wheelData.punishment));
+                }
+                if (importData.wheelData.reward) {
+                    localStorage.setItem('rewardWheelData', JSON.stringify(importData.wheelData.reward));
+                }
+            }
+            
+            // Reload application with new data
+            location.reload();
+            
+        } catch (error) {
+            console.error('Import error:', error);
+            showNotification(
+                getTranslatedText('Failed to import data. Please check the file format.', '导入数据失败。请检查文件格式。'),
+                'error'
+            );
+        }
+    };
+    
+    reader.readAsText(file);
+    
+    // Clear the input for next use
+    event.target.value = '';
 }

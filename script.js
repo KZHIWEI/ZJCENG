@@ -16,6 +16,9 @@ let allWordsCompleted = false;
 let visitedWords = new Set();
 let allowPrevious = true;
 let showPauseButton = true;
+let shuffleWords = false;
+let showAllWords = true;
+let displayWords = []; // Words array for display (may be shuffled)
 
 // Wheel variables
 let currentWheelType = 'punishment'; // 'punishment' or 'reward'
@@ -75,6 +78,8 @@ const langToggle = document.getElementById('langToggle');
 const currentLangSpan = document.getElementById('currentLang');
 const allowPreviousToggle = document.getElementById('allowPreviousToggle');
 const showPauseButtonToggle = document.getElementById('showPauseButtonToggle');
+const shuffleWordsToggle = document.getElementById('shuffleWordsToggle');
+const showAllWordsToggle = document.getElementById('showAllWordsToggle');
 const wordCount = document.getElementById('wordCount');
 
 // Data management elements
@@ -216,6 +221,8 @@ function setupEventListeners() {
     if (hideWordToggle) hideWordToggle.addEventListener('change', onHideWordToggle);
     if (allowPreviousToggle) allowPreviousToggle.addEventListener('change', onAllowPreviousToggle);
     if (showPauseButtonToggle) showPauseButtonToggle.addEventListener('change', onShowPauseButtonToggle);
+    if (shuffleWordsToggle) shuffleWordsToggle.addEventListener('change', onShuffleWordsToggle);
+    if (showAllWordsToggle) showAllWordsToggle.addEventListener('change', onShowAllWordsToggle);
     if (timeoutSlider) timeoutSlider.addEventListener('input', onTimeoutSliderChange);
     if (timeoutNumber) timeoutNumber.addEventListener('input', onTimeoutNumberChange);
     
@@ -623,7 +630,12 @@ function updateChildMode() {
         currentWords = [];
     }
     
-    if (currentWords.length === 0) {
+    // Ensure displayWords is updated
+    if (!Array.isArray(displayWords)) {
+        updateDisplayWords();
+    }
+    
+    if (displayWords.length === 0) {
         currentWord.textContent = getTranslatedText("No words for today!", "今天没有单词！");
         wordMeaning.textContent = getTranslatedText("Ask your teacher to add some words.", "请让老师添加一些单词。");
         wordProgress.textContent = "0/0";
@@ -642,7 +654,8 @@ function updateChildMode() {
         // Show completion state
         showCompletionState(learningCard, wordDisplay);
     } else {
-        const word = currentWords[currentWordIndex];
+        // Single word mode
+        const word = displayWords[currentWordIndex];
         
         if (hideWordMode) {
             // Hide word mode - listening practice
@@ -672,14 +685,14 @@ function updateChildMode() {
             title.textContent = getTranslatedText("Today's English Word", "今天的英语单词");
         }
         
-        wordProgress.textContent = `${currentWordIndex}/${currentWords.length}`;
-        updateWordCount(currentWordIndex, currentWords.length);
+        wordProgress.textContent = `${currentWordIndex + 1}/${displayWords.length}`;
+        updateWordCount(currentWordIndex + 1, displayWords.length);
         playBtn.disabled = false;
         nextBtn.disabled = false;
         
         // Track visited words
-        if (currentWords[currentWordIndex]) {
-            visitedWords.add(currentWords[currentWordIndex].id || currentWordIndex);
+        if (displayWords[currentWordIndex]) {
+            visitedWords.add(displayWords[currentWordIndex].id || currentWordIndex);
         }
         
         // Update navigation button states
@@ -717,17 +730,45 @@ function showCompletionState(learningCard, wordDisplay) {
     learningCard.classList.remove('listening-mode');
     wordDisplay.classList.remove('hidden-mode');
     
-    // Update the data attributes for proper translation
-    if (currentWord) {
-        currentWord.setAttribute('data-en', '🎉 All Done!');
-        currentWord.setAttribute('data-zh', '🎉 全部完成！');
-        currentWord.textContent = getTranslatedText("🎉 All Done!", "🎉 全部完成！");
-    }
-    
-    if (wordMeaning) {
-        wordMeaning.setAttribute('data-en', 'Great job! You\'ve completed all words.');
-        wordMeaning.setAttribute('data-zh', '做得很好！你已经完成了所有单词。');
-        wordMeaning.textContent = getTranslatedText("Great job! You've completed all words.", "做得很好！你已经完成了所有单词。");
+    if (showAllWords) {
+        // Show all words list after completion
+        const title = document.querySelector('.learning-card .title');
+        if (title) {
+            title.textContent = getTranslatedText("🎉 All Done! Here are all the words:", "🎉 全部完成！以下是所有单词：");
+        }
+        
+        // Create all words display - compact list style
+        const allWordsHtml = currentWords.map((word, index) => `
+            <div class="word-item-display" data-word-index="${index}">
+                <div class="word-content">
+                    <div class="word-text-large">${escapeHtml(word.word)}</div>
+                    ${word.meaning ? `<div class="word-meaning-text">${escapeHtml(word.meaning)}</div>` : ''}
+                </div>
+                <button class="play-word-btn" onclick="playWordByIndex(${index})" data-en="Play" data-zh="播放">🔊</button>
+            </div>
+        `).join('');
+        
+        if (currentWord) {
+            currentWord.innerHTML = allWordsHtml;
+        }
+        
+        if (wordMeaning) {
+            wordMeaning.textContent = '';
+        }
+    } else {
+        // Original completion message
+        // Update the data attributes for proper translation
+        if (currentWord) {
+            currentWord.setAttribute('data-en', '🎉 All Done!');
+            currentWord.setAttribute('data-zh', '🎉 全部完成！');
+            currentWord.textContent = getTranslatedText("🎉 All Done!", "🎉 全部完成！");
+        }
+        
+        if (wordMeaning) {
+            wordMeaning.setAttribute('data-en', 'Great job! You\'ve completed all words.');
+            wordMeaning.setAttribute('data-zh', '做得很好！你已经完成了所有单词。');
+            wordMeaning.textContent = getTranslatedText("Great job! You've completed all words.", "做得很好！你已经完成了所有单词。");
+        }
     }
     
     // Hide progress bar and word count in completion state
@@ -786,9 +827,9 @@ function restoreOriginalAttributes() {
 }
 
 async function playCurrentWord() {
-    if (currentWords.length === 0) return;
+    if (displayWords.length === 0) return;
     
-    const word = currentWords[currentWordIndex].word;
+    const word = displayWords[currentWordIndex].word;
     
     // Add visual feedback
     playBtn.classList.add('loading');
@@ -893,10 +934,10 @@ function playWordWithBrowserAPI(word) {
 }
 
 function nextWord() {
-    if (currentWords.length === 0) return;
+    if (displayWords.length === 0) return;
     
     // Check if we're at the last word and all words have been visited
-    if (currentWordIndex === currentWords.length - 1 && visitedWords.size >= currentWords.length) {
+    if (currentWordIndex === displayWords.length - 1 && visitedWords.size >= displayWords.length) {
         // Show completion state instead of wrapping around
         allWordsCompleted = true;
         stopTimer();
@@ -915,7 +956,7 @@ function nextWord() {
         learningCard.classList.add('listening-mode');
     }
     
-    currentWordIndex = (currentWordIndex + 1) % currentWords.length;
+    currentWordIndex = (currentWordIndex + 1) % displayWords.length;
     updateChildMode();
     
     // Auto-play the new word
@@ -936,7 +977,7 @@ function nextWord() {
 }
 
 function previousWord() {
-    if (currentWords.length === 0) return;
+    if (displayWords.length === 0) return;
     
     // Stop current timer
     stopTimer();
@@ -962,7 +1003,7 @@ function previousWord() {
     }
     
     // Move to previous word (with wrap-around)
-    currentWordIndex = currentWordIndex === 0 ? currentWords.length - 1 : currentWordIndex - 1;
+    currentWordIndex = currentWordIndex === 0 ? displayWords.length - 1 : currentWordIndex - 1;
     updateChildMode();
     
     // Auto-play the new word
@@ -1165,6 +1206,54 @@ function saveWords() {
     }, 1000);
 }
 
+// Utility functions
+function updateDisplayWords() {
+    if (shuffleWords && currentWords.length > 0) {
+        displayWords = shuffleArray([...currentWords]);
+    } else {
+        displayWords = [...currentWords];
+    }
+}
+
+function playWordByIndex(index) {
+    if (currentWords[index]) {
+        const word = currentWords[index].word;
+        
+        // Try ResponsiveVoice first (best quality)
+        if (typeof responsiveVoice !== 'undefined') {
+            responsiveVoice.speak(word, "US English Female", {
+                rate: 0.8,
+                pitch: 1,
+                volume: 1
+            });
+            return;
+        }
+        
+        // Try Google Translate API (fallback)
+        const audio = new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(word)}&tl=en&client=tw-ob`);
+        audio.play().catch(() => {
+            // Fallback to browser's built-in speech synthesis
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(word);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.8;
+                utterance.pitch = 1;
+                utterance.volume = 1;
+                speechSynthesis.speak(utterance);
+            }
+        });
+    }
+}
+
+function shuffleArray(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+}
+
 // Local storage functions
 function saveWordsToStorage() {
     localStorage.setItem('englishWords', JSON.stringify(currentWords));
@@ -1197,6 +1286,9 @@ function loadWords() {
         saveWordsToStorage();
     }
     
+    // Update display words (apply shuffle if needed)
+    updateDisplayWords();
+    
     currentWordIndex = 0;
     // Reset completion state when loading words
     allWordsCompleted = false;
@@ -1209,6 +1301,8 @@ function loadSettings() {
     hideWordMode = settings.hideWordMode || false;
     allowPrevious = settings.allowPrevious !== undefined ? settings.allowPrevious : true;
     showPauseButton = settings.showPauseButton !== undefined ? settings.showPauseButton : true;
+    shuffleWords = settings.shuffleWords || false;
+    showAllWords = settings.showAllWords !== undefined ? settings.showAllWords : true;
     wordTimeout = settings.wordTimeout || 0;
     currentLanguage = settings.language || 'zh';
     adminPassword = settings.adminPassword || null; // Load custom admin password
@@ -1216,6 +1310,8 @@ function loadSettings() {
     hideWordToggle.checked = hideWordMode;
     if (allowPreviousToggle) allowPreviousToggle.checked = allowPrevious;
     if (showPauseButtonToggle) showPauseButtonToggle.checked = showPauseButton;
+    if (shuffleWordsToggle) shuffleWordsToggle.checked = shuffleWords;
+    if (showAllWordsToggle) showAllWordsToggle.checked = showAllWords;
     timeoutSlider.value = wordTimeout;
     timeoutNumber.value = wordTimeout;
     
@@ -1232,6 +1328,8 @@ function saveSettings() {
         hideWordMode: hideWordMode,
         allowPrevious: allowPrevious,
         showPauseButton: showPauseButton,
+        shuffleWords: shuffleWords,
+        showAllWords: showAllWords,
         wordTimeout: wordTimeout,
         language: currentLanguage,
         adminPassword: adminPassword // Save custom admin password
@@ -1275,6 +1373,37 @@ function onShowPauseButtonToggle() {
         showNotification(getTranslatedText('Pause button enabled! Children can pause the timer.', '暂停按钮已启用！儿童可以暂停计时器。'), 'success');
     } else {
         showNotification(getTranslatedText('Pause button disabled! Timer will run continuously.', '暂停按钮已禁用！计时器将连续运行。'), 'info');
+    }
+}
+
+function onShuffleWordsToggle() {
+    shuffleWords = shuffleWordsToggle.checked;
+    saveSettings();
+    updateDisplayWords(); // Update display words to apply/remove shuffle
+    currentWordIndex = 0; // Reset to first word
+    allWordsCompleted = false;
+    visitedWords.clear();
+    updateChildMode();
+    updateAdminMode();
+    
+    // Show notification
+    if (shuffleWords) {
+        showNotification(getTranslatedText('Word shuffling enabled! Words will be in random order.', '单词打乱已启用！单词将以随机顺序显示。'), 'success');
+    } else {
+        showNotification(getTranslatedText('Word shuffling disabled! Words will be in original order.', '单词打乱已禁用！单词将以原始顺序显示。'), 'info');
+    }
+}
+
+function onShowAllWordsToggle() {
+    showAllWords = showAllWordsToggle.checked;
+    saveSettings();
+    updateChildMode();
+    
+    // Show notification
+    if (showAllWords) {
+        showNotification(getTranslatedText('Show all words enabled! After completion, all words will be displayed for review.', '显示所有单词已启用！完成后将显示所有单词供复习。'), 'success');
+    } else {
+        showNotification(getTranslatedText('Show all words disabled! Only completion message will be shown.', '显示所有单词已禁用！仅显示完成消息。'), 'info');
     }
 }
 

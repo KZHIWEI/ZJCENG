@@ -1,7 +1,7 @@
 // Global variables
 let currentWords = [];
 let currentWordIndex = 0;
-let selectedDate = new Date().toISOString().split('T')[0];
+// Date logic removed - using single word list
 let hideWordMode = false;
 let wordTimeout = 0; // in seconds, 0 means disabled
 let timerInterval = null;
@@ -39,7 +39,7 @@ const wordMeaning = document.getElementById('wordMeaning');
 const playBtn = document.getElementById('playBtn');
 const nextBtn = document.getElementById('nextBtn');
 const wordProgress = document.getElementById('wordProgress');
-const dateInput = document.getElementById('dateInput');
+// dateInput removed - no longer using date selection
 const newWord = document.getElementById('newWord');
 const newMeaning = document.getElementById('newMeaning');
 const addWordBtn = document.getElementById('addWordBtn');
@@ -125,14 +125,11 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeApp() {
-    // Set today's date as default
-    dateInput.value = selectedDate;
-    
     // Load settings
     loadSettings();
     
-    // Load words for today
-    loadWordsForDate(selectedDate);
+    // Load words
+    loadWords();
     
     // Initialize wheel
     initializeWheel();
@@ -212,8 +209,7 @@ function setupEventListeners() {
         });
     }
     
-    // Admin mode controls
-    if (dateInput) dateInput.addEventListener('change', onDateChange);
+    // Admin mode controls (date selection removed)
     if (addWordBtn) addWordBtn.addEventListener('click', addNewWord);
     if (clearWordsBtn) clearWordsBtn.addEventListener('click', clearAllWords);
     if (saveWordsBtn) saveWordsBtn.addEventListener('click', saveWords);
@@ -430,8 +426,8 @@ function switchMode(mode) {
         childModeBtn.classList.add('active');
         childMode.classList.add('active');
         
-        // Load today's words when switching to child mode
-        loadWordsForDate(new Date().toISOString().split('T')[0]);
+        // Load words when switching to child mode
+        loadWords();
         updateChildMode();
         updatePauseButtonVisibility(); // Ensure pause button visibility is updated
         startTimer(); // Start timer when entering child mode
@@ -621,6 +617,11 @@ function showSetupError(message) {
 function updateChildMode() {
     const learningCard = document.querySelector('.learning-card');
     const wordDisplay = document.querySelector('.word-display');
+    
+    // Ensure currentWords is an array
+    if (!Array.isArray(currentWords)) {
+        currentWords = [];
+    }
     
     if (currentWords.length === 0) {
         currentWord.textContent = getTranslatedText("No words for today!", "今天没有单词！");
@@ -1065,12 +1066,6 @@ function updateNavigationButtons() {
 }
 
 // Admin mode functions
-function onDateChange() {
-    selectedDate = dateInput.value;
-    loadWordsForDate(selectedDate);
-    updateAdminMode();
-}
-
 function addNewWord() {
     const word = newWord.value.trim();
     const meaning = newMeaning.value.trim();
@@ -1081,10 +1076,10 @@ function addNewWord() {
         return;
     }
     
-    // Check if word already exists for this date
+    // Check if word already exists
     const existingWord = currentWords.find(w => w.word.toLowerCase() === word.toLowerCase());
     if (existingWord) {
-        alert('This word already exists for the selected date!');
+        alert('This word already exists!');
         newWord.focus();
         return;
     }
@@ -1117,6 +1112,11 @@ function addNewWord() {
 }
 
 function updateAdminMode() {
+    // Ensure currentWords is an array
+    if (!Array.isArray(currentWords)) {
+        currentWords = [];
+    }
+    
     if (currentWords.length === 0) {
         const noWordsText = getTranslatedText('No words added for this date. Add some words above!', '此日期尚未添加单词。请在上面添加一些单词！');
         wordsList.innerHTML = `<p class="no-words" data-en="No words added for this date. Add some words above!" data-zh="此日期尚未添加单词。请在上面添加一些单词！">${noWordsText}</p>`;
@@ -1167,17 +1167,25 @@ function saveWords() {
 
 // Local storage functions
 function saveWordsToStorage() {
-    const allWords = JSON.parse(localStorage.getItem('englishWords') || '{}');
-    allWords[selectedDate] = currentWords;
-    localStorage.setItem('englishWords', JSON.stringify(allWords));
+    localStorage.setItem('englishWords', JSON.stringify(currentWords));
 }
 
-function loadWordsForDate(date) {
-    const allWords = JSON.parse(localStorage.getItem('englishWords') || '{}');
-    currentWords = allWords[date] || [];
+function loadWords() {
+    const stored = JSON.parse(localStorage.getItem('englishWords') || '[]');
     
-    // Add default words for today if no words exist and it's today's date
-    if (currentWords.length === 0 && date === new Date().toISOString().split('T')[0]) {
+    // Ensure currentWords is always an array (handle legacy data format)
+    if (Array.isArray(stored)) {
+        currentWords = stored;
+    } else {
+        // Convert legacy object format to array (take first available date's words)
+        const firstDate = Object.keys(stored)[0];
+        currentWords = firstDate ? stored[firstDate] : [];
+        // Save in new format
+        saveWordsToStorage();
+    }
+    
+    // Add default words if no words exist
+    if (currentWords.length === 0) {
         currentWords = [
             { word: 'hello', meaning: '你好' },
             { word: 'world', meaning: '世界' },
@@ -1186,12 +1194,11 @@ function loadWordsForDate(date) {
             { word: 'water', meaning: '水' }
         ];
         // Save default words
-        allWords[date] = currentWords;
-        localStorage.setItem('englishWords', JSON.stringify(allWords));
+        saveWordsToStorage();
     }
     
     currentWordIndex = 0;
-    // Reset completion state when loading new words
+    // Reset completion state when loading words
     allWordsCompleted = false;
     visitedWords.clear();
 }
@@ -2579,9 +2586,8 @@ function exportAllData() {
             }
         };
         
-        // Collect all word data (all dates)
-        const allWords = JSON.parse(localStorage.getItem('englishWords') || '{}');
-        exportData.words = allWords;
+        // Collect word data
+        exportData.words = JSON.parse(localStorage.getItem('englishWords') || '[]');
         
         // Create and download file
         const dataStr = JSON.stringify(exportData, null, 2);

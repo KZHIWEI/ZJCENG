@@ -225,7 +225,12 @@ function setupEventListeners() {
     if (showPauseButtonToggle) showPauseButtonToggle.addEventListener('change', onShowPauseButtonToggle);
     if (shuffleWordsToggle) shuffleWordsToggle.addEventListener('change', onShuffleWordsToggle);
     if (showAllWordsToggle) showAllWordsToggle.addEventListener('change', onShowAllWordsToggle);
-    if (useChineseTTSToggle) useChineseTTSToggle.addEventListener('change', onUseChineseTTSToggle);
+    if (useChineseTTSToggle) {
+        useChineseTTSToggle.addEventListener('change', onUseChineseTTSToggle);
+        console.log('useChineseTTSToggle event listener added successfully');
+    } else {
+        console.error('useChineseTTSToggle element not found in setupEventListeners!');
+    }
     if (timeoutSlider) timeoutSlider.addEventListener('input', onTimeoutSliderChange);
     if (timeoutNumber) timeoutNumber.addEventListener('input', onTimeoutNumberChange);
     
@@ -1547,6 +1552,7 @@ function loadSettings() {
     shuffleWords = settings.shuffleWords || false;
     showAllWords = settings.showAllWords !== undefined ? settings.showAllWords : true;
     useChineseTTS = settings.useChineseTTS || false;
+    console.log('Loading useChineseTTS setting:', useChineseTTS);
     wordTimeout = settings.wordTimeout || 0;
     currentLanguage = settings.language || 'zh';
     adminPassword = settings.adminPassword || null; // Load custom admin password
@@ -1556,7 +1562,12 @@ function loadSettings() {
     if (showPauseButtonToggle) showPauseButtonToggle.checked = showPauseButton;
     if (shuffleWordsToggle) shuffleWordsToggle.checked = shuffleWords;
     if (showAllWordsToggle) showAllWordsToggle.checked = showAllWords;
-    if (useChineseTTSToggle) useChineseTTSToggle.checked = useChineseTTS;
+    if (useChineseTTSToggle) {
+        useChineseTTSToggle.checked = useChineseTTS;
+        console.log('Setting useChineseTTSToggle.checked to:', useChineseTTS);
+    } else {
+        console.log('useChineseTTSToggle element not found!');
+    }
     timeoutSlider.value = wordTimeout;
     timeoutNumber.value = wordTimeout;
     

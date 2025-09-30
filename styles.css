@@ -220,6 +220,86 @@ body {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
+/* Completion words table */
+.completion-words-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 14px;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.completion-words-table thead {
+    background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+    color: white;
+}
+
+.completion-words-table th {
+    padding: 12px 8px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.completion-words-table td {
+    padding: 8px;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: middle;
+}
+
+.completion-words-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.completion-words-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.completion-words-table .word-col {
+    font-weight: 600;
+    color: #2d3436;
+    min-width: 80px;
+}
+
+.completion-words-table .meaning-col {
+    color: #636e72;
+    font-style: italic;
+    min-width: 80px;
+}
+
+.play-word-btn-small {
+    background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 30px;
+    height: 28px;
+}
+
+.play-word-btn-small:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.completion-words-table th:first-child,
+.completion-words-table td:first-child {
+    text-align: center;
+    width: 50px;
+}
+
+.completion-words-table th:last-child,
+.completion-words-table td:last-child {
+    text-align: center;
+    width: 60px;
+}
+
 .controls {
     display: flex;
     flex-direction: column;
@@ -449,6 +529,36 @@ body {
     font-size: 14px;
     color: #636e72;
     font-style: italic;
+}
+
+.word-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.play-en-btn, .play-zh-btn {
+    background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    min-width: 45px;
+}
+
+.play-zh-btn {
+    background: linear-gradient(135deg, #fd79a8 0%, #e84393 100%);
+}
+
+.play-en-btn:hover, .play-zh-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .delete-btn {

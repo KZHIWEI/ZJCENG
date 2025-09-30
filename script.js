@@ -18,6 +18,7 @@ let allowPrevious = true;
 let showPauseButton = true;
 let shuffleWords = false;
 let showAllWords = true;
+let useChineseTTS = false;
 let displayWords = []; // Words array for display (may be shuffled)
 
 // Wheel variables
@@ -80,6 +81,7 @@ const allowPreviousToggle = document.getElementById('allowPreviousToggle');
 const showPauseButtonToggle = document.getElementById('showPauseButtonToggle');
 const shuffleWordsToggle = document.getElementById('shuffleWordsToggle');
 const showAllWordsToggle = document.getElementById('showAllWordsToggle');
+const useChineseTTSToggle = document.getElementById('useChineseTTSToggle');
 const wordCount = document.getElementById('wordCount');
 
 // Data management elements
@@ -223,6 +225,7 @@ function setupEventListeners() {
     if (showPauseButtonToggle) showPauseButtonToggle.addEventListener('change', onShowPauseButtonToggle);
     if (shuffleWordsToggle) shuffleWordsToggle.addEventListener('change', onShuffleWordsToggle);
     if (showAllWordsToggle) showAllWordsToggle.addEventListener('change', onShowAllWordsToggle);
+    if (useChineseTTSToggle) useChineseTTSToggle.addEventListener('change', onUseChineseTTSToggle);
     if (timeoutSlider) timeoutSlider.addEventListener('input', onTimeoutSliderChange);
     if (timeoutNumber) timeoutNumber.addEventListener('input', onTimeoutNumberChange);
     
@@ -706,6 +709,41 @@ function updateChildMode() {
     updatePauseButtonVisibility();
 }
 
+async function generateCompletionTable() {
+    const tableBody = document.getElementById('completion-table-body');
+    if (!tableBody) return;
+    
+    try {
+        const tableRows = await Promise.all(displayWords.map(async (word, index) => {
+            let meaning = word.meaning;
+            if (!meaning || meaning.trim() === '') {
+                try {
+                    meaning = await getChineseMeaning(word.word);
+                } catch (error) {
+                    meaning = '';
+                }
+            }
+            return `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td class="word-col">${escapeHtml(word.word)}</td>
+                    <td class="meaning-col">${escapeHtml(meaning || '-')}</td>
+                    <td><button class="play-word-btn-small" onclick="playWordInEnglish('${escapeHtml(word.word)}')" title="${getTranslatedText('Play English', '播放英文')}">🔊</button></td>
+                </tr>
+            `;
+        }));
+        
+        tableBody.innerHTML = tableRows.join('');
+    } catch (error) {
+        console.error('Error generating completion table:', error);
+        tableBody.innerHTML = `
+            <tr><td colspan="4" style="text-align: center; padding: 20px; color: #e74c3c;">
+                ${getTranslatedText('Error loading translations', '翻译加载失败')}
+            </td></tr>
+        `;
+    }
+}
+
 function updateWordCount(current, total) {
     if (wordCount) {
         const currentText = getTranslatedText(
@@ -737,20 +775,31 @@ function showCompletionState(learningCard, wordDisplay) {
             title.textContent = getTranslatedText("🎉 All Done! Here are all the words:", "🎉 全部完成！以下是所有单词：");
         }
         
-        // Create all words display - compact list style
-        const allWordsHtml = currentWords.map((word, index) => `
-            <div class="word-item-display" data-word-index="${index}">
-                <div class="word-content">
-                    <div class="word-text-large">${escapeHtml(word.word)}</div>
-                    ${word.meaning ? `<div class="word-meaning-text">${escapeHtml(word.meaning)}</div>` : ''}
-                </div>
-                <button class="play-word-btn" onclick="playWordByIndex(${index})" data-en="Play" data-zh="播放">🔊</button>
-            </div>
-        `).join('');
+        // Create all words display - table format with actual study order
+        const tableHeaderHtml = `
+            <table class="completion-words-table">
+                <thead>
+                    <tr>
+                        <th data-en="Index" data-zh="序号">序号</th>
+                        <th data-en="English" data-zh="英文">英文</th>
+                        <th data-en="Chinese" data-zh="中文">中文</th>
+                        <th data-en="Play" data-zh="播放">播放</th>
+                    </tr>
+                </thead>
+                <tbody id="completion-table-body">
+                    <tr><td colspan="4" style="text-align: center; padding: 20px;">
+                        ${getTranslatedText('Loading translations...', '正在加载翻译...')}
+                    </td></tr>
+                </tbody>
+            </table>
+        `;
         
         if (currentWord) {
-            currentWord.innerHTML = allWordsHtml;
+            currentWord.innerHTML = tableHeaderHtml;
         }
+        
+        // Asynchronously populate the table
+        generateCompletionTable();
         
         if (wordMeaning) {
             wordMeaning.textContent = '';
@@ -829,7 +878,41 @@ function restoreOriginalAttributes() {
 async function playCurrentWord() {
     if (displayWords.length === 0) return;
     
-    const word = displayWords[currentWordIndex].word;
+    const currentWordData = displayWords[currentWordIndex];
+    
+    // Choose text to speak based on setting
+    let textToSpeak, language;
+    console.log('useChineseTTS:', useChineseTTS);
+    console.log('currentWordData:', currentWordData);
+    
+    if (useChineseTTS) {
+        // Try to get Chinese meaning
+        let chineseMeaning = currentWordData.meaning;
+        if (!chineseMeaning || chineseMeaning.trim() === '') {
+            // If no meaning provided, try to get translation from API
+            try {
+                chineseMeaning = await getChineseMeaning(currentWordData.word);
+            } catch (error) {
+                console.error('Failed to get Chinese meaning:', error);
+                chineseMeaning = null;
+            }
+        }
+        
+        if (chineseMeaning) {
+            textToSpeak = chineseMeaning;
+            language = 'chinese';
+            console.log('Using Chinese TTS:', textToSpeak);
+        } else {
+            // Fallback to English if no Chinese meaning available
+            textToSpeak = currentWordData.word;
+            language = 'english';
+            console.log('No Chinese meaning found, using English TTS:', textToSpeak);
+        }
+    } else {
+        textToSpeak = currentWordData.word;
+        language = 'english';
+        console.log('Using English TTS:', textToSpeak);
+    }
     
     // Add visual feedback
     playBtn.classList.add('loading');
@@ -839,11 +922,19 @@ async function playCurrentWord() {
     }
     
     try {
-        // Try API first, then fallback to browser speech synthesis
-        await playWordWithAPI(word);
+        // Use appropriate TTS function based on language setting
+        if (language === 'chinese') {
+            await playWordWithAPI(textToSpeak, 'chinese');
+        } else {
+            await playWordWithAPI(textToSpeak, 'english');
+        }
     } catch (error) {
         console.log('API failed, using browser speech synthesis:', error);
-        playWordWithBrowserAPI(word);
+        if (language === 'chinese') {
+            playWordWithBrowserAPI(textToSpeak, 'zh-CN');
+        } else {
+            playWordWithBrowserAPI(textToSpeak, 'en-US');
+        }
     }
     
     // Add bounce animation to the word
@@ -853,12 +944,16 @@ async function playCurrentWord() {
     }, 600);
 }
 
-async function playWordWithAPI(word) {
+async function playWordWithAPI(text, language = 'english') {
+    console.log('playWordWithAPI called with:', { text, language });
+    
     // Method 1: ResponsiveVoice (if available)
     if (typeof responsiveVoice !== 'undefined') {
         return new Promise((resolve, reject) => {
-            responsiveVoice.speak(word, "US English Female", {
-                rate: 0.8,
+            const voice = language === 'chinese' ? "Chinese Female" : "US English Female";
+            console.log('Using ResponsiveVoice with voice:', voice);
+            responsiveVoice.speak(text, voice, {
+                rate: language === 'chinese' ? 0.7 : 0.8,
                 pitch: 1,
                 volume: 1,
                 onend: () => {
@@ -876,7 +971,9 @@ async function playWordWithAPI(word) {
     // Method 2: Using Free TTS API (no API key required)
     try {
         // Using a free text-to-speech service
-        const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=${encodeURIComponent(word)}`;
+        const langCode = language === 'chinese' ? 'zh' : 'en';
+        const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${langCode}&client=tw-ob&q=${encodeURIComponent(text)}`;
+        console.log('Using Google TTS with URL:', audioUrl);
         
         const audio = new Audio();
         audio.crossOrigin = "anonymous";
@@ -905,12 +1002,14 @@ async function playWordWithAPI(word) {
     }
 }
 
-function playWordWithBrowserAPI(word) {
+function playWordWithBrowserAPI(text, lang = 'en-US') {
+    console.log('playWordWithBrowserAPI called with:', { text, lang });
+    
     // Fallback to browser's built-in speech synthesis
     if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(word);
-        utterance.lang = 'en-US';
-        utterance.rate = 0.8;
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = lang;
+        utterance.rate = lang === 'zh-CN' ? 0.7 : 0.8;
         utterance.pitch = 1.2;
         utterance.volume = 1;
         
@@ -1163,13 +1262,19 @@ function updateAdminMode() {
         wordsList.innerHTML = `<p class="no-words" data-en="No words added for this date. Add some words above!" data-zh="此日期尚未添加单词。请在上面添加一些单词！">${noWordsText}</p>`;
     } else {
         const deleteText = getTranslatedText('Delete', '删除');
-        wordsList.innerHTML = currentWords.map(word => `
+        const playEnText = getTranslatedText('🔊 EN', '🔊 英');
+        const playZhText = getTranslatedText('🔊 ZH', '🔊 中');
+        wordsList.innerHTML = currentWords.map((word, index) => `
             <div class="word-item">
                 <div class="word-info">
                     <div class="word-text">${escapeHtml(word.word)}</div>
                     ${word.meaning ? `<div class="word-meaning-text">${escapeHtml(word.meaning)}</div>` : ''}
                 </div>
-                <button class="delete-btn" onclick="deleteWord(${word.id})" data-en="Delete" data-zh="删除">${deleteText}</button>
+                <div class="word-actions">
+                    <button class="play-en-btn" onclick="playWordInEnglish('${escapeHtml(word.word)}')" data-en="🔊 EN" data-zh="🔊 英" title="${getTranslatedText('Play in English', '英文发音')}">${playEnText}</button>
+                    ${word.meaning ? `<button class="play-zh-btn" onclick="playWordInChinese('${escapeHtml(word.meaning)}')" data-en="🔊 ZH" data-zh="🔊 中" title="${getTranslatedText('Play in Chinese', '中文发音')}">${playZhText}</button>` : ''}
+                    <button class="delete-btn" onclick="deleteWord(${word.id})" data-en="Delete" data-zh="删除">${deleteText}</button>
+                </div>
             </div>
         `).join('');
     }
@@ -1207,6 +1312,115 @@ function saveWords() {
 }
 
 // Utility functions
+// Cache for translated meanings to avoid repeated API calls
+const translationCache = new Map();
+
+async function getChineseMeaning(word) {
+    // Check cache first
+    const cacheKey = word.toLowerCase();
+    if (translationCache.has(cacheKey)) {
+        console.log('Using cached translation for:', word);
+        return translationCache.get(cacheKey);
+    }
+
+    // Default meanings for common words (fallback)
+    const defaultMeanings = {
+        'snake': '蛇', 'bird': '鸟', 'fish': '鱼', 'lion': '狮子', 'tiger': '老虎',
+        'elephant': '大象', 'monkey': '猴子', 'rabbit': '兔子', 'mouse': '老鼠', 'horse': '马',
+        'cow': '牛', 'pig': '猪', 'sheep': '羊', 'chicken': '鸡', 'duck': '鸭子',
+        'sun': '太阳', 'moon': '月亮', 'star': '星星', 'cloud': '云', 'rain': '雨',
+        'snow': '雪', 'wind': '风', 'fire': '火', 'earth': '地球', 'mountain': '山',
+        'hello': '你好', 'world': '世界', 'apple': '苹果', 'book': '书', 'water': '水',
+        'cat': '猫', 'dog': '狗', 'car': '车', 'house': '房子', 'school': '学校',
+        'good': '好', 'bad': '坏', 'big': '大', 'small': '小', 'new': '新',
+        'old': '老', 'hot': '热', 'cold': '冷', 'yes': '是', 'no': '不'
+    };
+
+    try {
+        console.log('Translating word via API:', word);
+        
+        // Try multiple translation APIs
+        let translation = await translateWithGoogleAPI(word);
+        
+        if (!translation) {
+            // Fallback to LibreTranslate API
+            translation = await translateWithLibreTranslateAPI(word);
+        }
+        
+        if (!translation) {
+            // Final fallback to default meanings
+            translation = defaultMeanings[cacheKey];
+        }
+
+        if (translation) {
+            // Cache the result
+            translationCache.set(cacheKey, translation);
+            console.log('Translation result:', word, '->', translation);
+            return translation;
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('Translation error:', error);
+        // Return default meaning if API fails
+        const defaultTranslation = defaultMeanings[cacheKey];
+        if (defaultTranslation) {
+            translationCache.set(cacheKey, defaultTranslation);
+        }
+        return defaultTranslation || null;
+    }
+}
+
+async function translateWithGoogleAPI(word) {
+    try {
+        // Use Google Translate API (free, no key required)
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh&dt=t&q=${encodeURIComponent(word)}`;
+        
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Google API failed');
+        
+        const data = await response.json();
+        if (data && data[0] && data[0][0] && data[0][0][0]) {
+            return data[0][0][0];
+        }
+        return null;
+    } catch (error) {
+        console.log('Google API failed:', error);
+        return null;
+    }
+}
+
+async function translateWithLibreTranslateAPI(word) {
+    try {
+        // Use LibreTranslate API (free, no key required)
+        const url = 'https://libretranslate.de/translate';
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                q: word,
+                source: 'en',
+                target: 'zh',
+                format: 'text'
+            })
+        });
+        
+        if (!response.ok) throw new Error('LibreTranslate API failed');
+        
+        const data = await response.json();
+        if (data && data.translatedText) {
+            return data.translatedText;
+        }
+        return null;
+    } catch (error) {
+        console.log('LibreTranslate API failed:', error);
+        return null;
+    }
+}
+
 function updateDisplayWords() {
     if (shuffleWords && currentWords.length > 0) {
         displayWords = shuffleArray([...currentWords]);
@@ -1218,31 +1432,60 @@ function updateDisplayWords() {
 function playWordByIndex(index) {
     if (currentWords[index]) {
         const word = currentWords[index].word;
-        
-        // Try ResponsiveVoice first (best quality)
-        if (typeof responsiveVoice !== 'undefined') {
-            responsiveVoice.speak(word, "US English Female", {
-                rate: 0.8,
-                pitch: 1,
-                volume: 1
-            });
-            return;
-        }
-        
-        // Try Google Translate API (fallback)
-        const audio = new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(word)}&tl=en&client=tw-ob`);
-        audio.play().catch(() => {
-            // Fallback to browser's built-in speech synthesis
-            if ('speechSynthesis' in window) {
-                const utterance = new SpeechSynthesisUtterance(word);
-                utterance.lang = 'en-US';
-                utterance.rate = 0.8;
-                utterance.pitch = 1;
-                utterance.volume = 1;
-                speechSynthesis.speak(utterance);
-            }
-        });
+        playWordInEnglish(word);
     }
+}
+
+function playWordInEnglish(word) {
+    // Try ResponsiveVoice first (best quality)
+    if (typeof responsiveVoice !== 'undefined') {
+        responsiveVoice.speak(word, "US English Female", {
+            rate: 0.8,
+            pitch: 1,
+            volume: 1
+        });
+        return;
+    }
+    
+    // Try Google Translate API (fallback)
+    const audio = new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(word)}&tl=en&client=tw-ob`);
+    audio.play().catch(() => {
+        // Fallback to browser's built-in speech synthesis
+        if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(word);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.8;
+            utterance.pitch = 1;
+            utterance.volume = 1;
+            speechSynthesis.speak(utterance);
+        }
+    });
+}
+
+function playWordInChinese(meaning) {
+    // Try ResponsiveVoice first (best quality for Chinese)
+    if (typeof responsiveVoice !== 'undefined') {
+        responsiveVoice.speak(meaning, "Chinese Female", {
+            rate: 0.7,
+            pitch: 1,
+            volume: 1
+        });
+        return;
+    }
+    
+    // Try Google Translate API for Chinese
+    const audio = new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(meaning)}&tl=zh&client=tw-ob`);
+    audio.play().catch(() => {
+        // Fallback to browser's built-in speech synthesis
+        if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(meaning);
+            utterance.lang = 'zh-CN';
+            utterance.rate = 0.7;
+            utterance.pitch = 1;
+            utterance.volume = 1;
+            speechSynthesis.speak(utterance);
+        }
+    });
 }
 
 function shuffleArray(array) {
@@ -1303,6 +1546,7 @@ function loadSettings() {
     showPauseButton = settings.showPauseButton !== undefined ? settings.showPauseButton : true;
     shuffleWords = settings.shuffleWords || false;
     showAllWords = settings.showAllWords !== undefined ? settings.showAllWords : true;
+    useChineseTTS = settings.useChineseTTS || false;
     wordTimeout = settings.wordTimeout || 0;
     currentLanguage = settings.language || 'zh';
     adminPassword = settings.adminPassword || null; // Load custom admin password
@@ -1312,6 +1556,7 @@ function loadSettings() {
     if (showPauseButtonToggle) showPauseButtonToggle.checked = showPauseButton;
     if (shuffleWordsToggle) shuffleWordsToggle.checked = shuffleWords;
     if (showAllWordsToggle) showAllWordsToggle.checked = showAllWords;
+    if (useChineseTTSToggle) useChineseTTSToggle.checked = useChineseTTS;
     timeoutSlider.value = wordTimeout;
     timeoutNumber.value = wordTimeout;
     
@@ -1330,6 +1575,7 @@ function saveSettings() {
         showPauseButton: showPauseButton,
         shuffleWords: shuffleWords,
         showAllWords: showAllWords,
+        useChineseTTS: useChineseTTS,
         wordTimeout: wordTimeout,
         language: currentLanguage,
         adminPassword: adminPassword // Save custom admin password
@@ -1404,6 +1650,19 @@ function onShowAllWordsToggle() {
         showNotification(getTranslatedText('Show all words enabled! After completion, all words will be displayed for review.', '显示所有单词已启用！完成后将显示所有单词供复习。'), 'success');
     } else {
         showNotification(getTranslatedText('Show all words disabled! Only completion message will be shown.', '显示所有单词已禁用！仅显示完成消息。'), 'info');
+    }
+}
+
+function onUseChineseTTSToggle() {
+    useChineseTTS = useChineseTTSToggle.checked;
+    console.log('useChineseTTS toggle changed to:', useChineseTTS);
+    saveSettings();
+    
+    // Show notification
+    if (useChineseTTS) {
+        showNotification(getTranslatedText('Chinese pronunciation enabled! Play button will speak Chinese meanings.', '中文发音已启用！播放按钮将朗读中文意思。'), 'success');
+    } else {
+        showNotification(getTranslatedText('English pronunciation enabled! Play button will speak English words.', '英文发音已启用！播放按钮将朗读英文单词。'), 'info');
     }
 }
 
